@@ -11,9 +11,9 @@
 ros::NodeHandle nh;                                           //Instantiate the node handle, which allows our program to create publishers and subscribers.
 std_msgs::Int16 centi;                                        //Declaring a class named centi.
 ros::Publisher chatter("chatter", &centi);                    //Here we instantiate a Publisher with a topic name of "chatter". The second parameter to Publisher is a reference to the message instance to be used for publishing.
-#include<NewPing.h>                                           //Included NewPing Function which is meant exclusively for Ultrasoinc Sensor.
-#define MAX_DISTANCE 300
-NewPing sonar1(13,13,MAX_DISTANCE);                           //A function sonar1 defined in Class NewPing;sonar1(trigger pin,Echo pin,Maximum Distance you want the Sensor to measure). It is to note that one of the advantages of using the NewPing
+#include<NewPing.h>                                           //Included NewPing Function which is meant exclusively for Ultrasoinc Sensor. You can download NewPing library from "http://forum.arduino.cc/index.php?topic=106043.0".
+#define MAX_DISTANCE 300                                      
+NewPing sonar1(13,13,MAX_DISTANCE);                           //A function sonar1 declared in Class NewPing;sonar1(trigger pin,Echo pin,Maximum Distance you want the Sensor to measure). It is to note that one of the advantages of using the NewPing
 NewPing sonar2(12,12,MAX_DISTANCE);                           //headerfile is that you can have the same pin for both Trigger and Echo signals. Here, I have used pins 11,12 and 13 of Arduino to integrate with the sensor.
 NewPing sonar3(11,11,MAX_DISTANCE);
 unsigned int m_cm;
@@ -35,58 +35,53 @@ void setup() {
         interrupts();                                         //Enable Interrupts.
 } 
 
-//compare match register TCNT1= [(16*(10^6))/(prescaler*desired interrupt frequency)]-1;   where 16*(10^6)-Frequency at which the Microcontroller works.
+//compare match register TCNT1= [(16*(10^6))/(prescaler(64 in this case)*desired interrupt frequency)]-1;   where 16*(10^6)-Frequency at which the Microcontroller works.
+//It should be noted that Serial command does not work when you use rosserial. Eg: Serial.print(), Serial.begin() would give you an error.
 void loop() {
-        if(c) {                       
-            m_cm=getMeasurement(3);                           //Activate Sensor3
-            centi.data=m_cm;
-            //Serial.print(m_cm);
-            chatter.publish( &centi);
-            nh.spinOnce();
-            //Serial.print("-");
-            c=false;  
+        if(c) {                                               //Activate Sensor3
+            m_cm=getMeasurement(3);                           //Get the distance of Obstacle in cm for sensor 3
+            centi.data=m_cm;                                  //Copy the value to "data" of int_16 datatype defined in class centi.
+            chatter.publish( &centi);                         //Now we actually broadcast the message to anyone who is connected.
+            nh.spinOnce();                                    //This command is used to receive any callbacks if there was a subscription into this application.
+            c=false;                                          //Stop executing the commands in this if statement.
         } 
         if(b) {                      
             m_cm=getMeasurement(2);                           //Activate Sensor2
-            //Serial.print(m_cm);
-            centi.data=m_cm;
+            centi.data=m_cm;                                  //Same Logic as Sensor3
             chatter.publish( &centi);
             nh.spinOnce();
-            //Serial.print("-");
             b=false;
         }
         if(a) {             
             m_cm=getMeasurement(1);                           //Activate Sensor1 
-            //Serial.print(m_cm);
             centi.data=m_cm;
             chatter.publish(&centi);
             nh.spinOnce();
-            //Serial.println();
             a=false;
         }
  
 }
-ISR(TIMER1_COMPC_vect) {                                      //Interrupt Service Routine.
-        c=true;
+ISR(TIMER1_COMPC_vect) {                                      //Interrupt Service Routine; The ISR(TIMER1_COMPC_vect) is called when TCNT1=OCR1C(7499 in this case).
+        c=true;                                               //Execute the corresponding code in void loop(). 
 }
-ISR(TIMER1_COMPB_vect) {
-        b=true;
+ISR(TIMER1_COMPB_vect) {                                      //The ISR(TIMER1_COMPB_vect) is called when TCNT1=OCR1B(14999 in this case).
+        b=true;                                               //Execute the corresponding code in void loop().
 }
-ISR(TIMER1_COMPA_vect) {                                      
-        a=true;
+ISR(TIMER1_COMPA_vect) {                                      //The ISR(TIMER1_COMPA_vect) is called when TCNT1=OCR1A(22499 in this case).
+        a=true;                                               //Execute the corresponding code in void loop().
 }
         
 unsigned int getMeasurement(char x) {
         unsigned int cm=0;
         switch(x)  {
               case 1:
-                       cm=sonar1.ping_cm();                   
+                       cm=sonar1.ping_cm();                   //Ping the signal, calculate the time and return the value in cm for sensor1.
                        break;
               case 2:
-                       cm=sonar2.ping_cm();
+                       cm=sonar2.ping_cm();                   //Same for sensor2
                        break;
               case 3:
-                       cm=sonar3.ping_cm();
+                       cm=sonar3.ping_cm();                   //Same for sensor3
                        break;        
                    }
         return(cm);
